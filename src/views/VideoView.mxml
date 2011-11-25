@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark" title="Video" creationComplete="init()">
+	<s:layout>
+		<s:VerticalLayout />
+	</s:layout>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+	<s:VideoDisplay id="lcoalVideoDisplay" x="34" y="26" width="420" height="278"/>
+	<s:VideoDisplay id="remoteVideoDisplay" x="34" y="312" width="420" height="278"/>
+	<s:Button id="btnExitApp" click="exitApp()">退出应用</s:Button>
+	
+	<fx:Script source="../net/walkwork/video.as" />
+	<fx:Script>
+		<![CDATA[
+			private function exitApp():void {
+				disconnect();
+				NativeApplication.nativeApplication.exit();
+			}
+		]]>
+	</fx:Script>
+</s:View>
