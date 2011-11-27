@@ -23,11 +23,8 @@ private var _remoteStreamArray:Array = null;
 private var localStream:NetStream = null;
 private var remoteStream:NetStream = null;
 
-//for test
-private var _conn2:NetConnection = null;
-private var _group2:NetGroup = null;
-private var _stream2:NetStream = null;
-
+private var _isRemoteStreamConnected:Boolean = false;
+private var _currentRemoteStream:String = null;
 
 
 private function init():void{
@@ -150,13 +147,7 @@ private function groupMultiStreamPublishNotify(name:String):void {
 	
 	_remoteStreamArray.push(name);
 	
-	if (null == remoteStream){
-		trace("Create remote stream");
-		remoteStream = new NetStream(_conn, _groupSpec.groupspecWithAuthorizations());
-		remoteStream.addEventListener(NetStatusEvent.NET_STATUS, eventHandler);	
-	} else {
-		playStream(name);
-	}
+	playRemoteStream(0);
 }
 
 private function groupMultiStreamUnPublishNotify(name:String):void {
@@ -173,101 +164,61 @@ private function groupMultiStreamUnPublishNotify(name:String):void {
 		}
 	}
 	
-	if (_remoteStreamArray.length == 1){
-		playStream(_remoteStreamArray[0]);
-	}		
+	if (_currentRemoteStream == name){
+		playRemoteStream(0);
+	}
 }
 
 private function connectStream():void {
 	localStream = new NetStream(_conn, _groupSpec.groupspecWithAuthorizations());
 	localStream.addEventListener(NetStatusEvent.NET_STATUS, eventHandler);
+	
+	remoteStream = new NetStream(_conn, _groupSpec.groupspecWithAuthorizations());
+	remoteStream.addEventListener(NetStatusEvent.NET_STATUS, eventHandler);		
 }
 
 private function streamConnectSuccess(stream:NetStream):void {
 	if (stream == localStream){
 		trace("Upload local stream");
-		publishVideo();
+		publishLocalVideo();
 	} else if (stream == remoteStream){
-		trace("Play remote stream");
-		if (_remoteStreamArray.length == 1){
-			playStream(_remoteStreamArray[0]);
-		}		
+		trace("Init remote stream");
+		_isRemoteStreamConnected = true;
+		initRemoteVideo();		
 	} else {
 		trace("Error Stream");
 	}
 }
 
-private function publishVideo():void {
+private function publishLocalVideo():void {
 	trace("Publish stream : " + this.data.userId);
 	localStream.attachCamera(_camera);
 	localStream.publish(this.data.userId);	
 }
 
-private function playStream(name:String):void {
+private function initRemoteVideo():void {
 	var remoteVideoDisplay:VideoDisplay = this["remoteVideoDisplay"];
 	var video:Video = new Video(remoteVideoDisplay.width, remoteVideoDisplay.height);
 	video.smoothing = true;
 	video.attachNetStream(remoteStream);
 	remoteVideoDisplay.addChild(video);
-	remoteStream.play(name);
+	
+	playRemoteStream(0);
 }
 
-/**
- * 
- * second connection, just for test 
- * 
- * */
-
-private function connect2():void {
-	var uri:String = "rtmfp://" + this.data.ipAddr;
-	_conn2 = new NetConnection();
-	_conn2.addEventListener(NetStatusEvent.NET_STATUS, eventHandler2);
-	
-	try{
-		_conn2.connect(uri);
-	}catch (e:ArgumentError){
-		trace("Incorrect remote connet URL");
+private function playRemoteStream(index:int):void {
+	if (!_isRemoteStreamConnected) {
+		trace("Remote stream is not connected.");
+		return;
 	}
-}
-
-private function eventHandler2(event:NetStatusEvent):void {
-	trace("Net Status Event Remote : " + event.info.code);
-	switch (event.info.code) {
-		case "NetConnection.Connect.Success" :
-			connectGroup2();
-			break;
-		case "NetStream.Connect.Success":
-			_stream2.attachCamera(_camera);
-			_stream2.publish(this.data.playId);	
-			break;
-		case "NetGroup.Connect.Success":
-			groupConnectSuccess2();
-			break;		
-		case "NetGroup.Posting.Notify":
-			break;
-		default:
-			break;
+	
+	if (null == _remoteStreamArray || _remoteStreamArray.length <=0 ){
+		trace("Nothing to play.");
+		return;
 	}
-}
-
-private function connectGroup2():void {
-	var groupSpec:GroupSpecifier = new GroupSpecifier(this.data.confId);
-	groupSpec.multicastEnabled = true;
-	groupSpec.postingEnabled = true;
-	groupSpec.serverChannelEnabled = true;
 	
-	_group2 = new NetGroup(_conn2, groupSpec.groupspecWithAuthorizations());
-	_group2.addEventListener(NetStatusEvent.NET_STATUS, eventHandler2);
-}
-
-private function groupConnectSuccess2():void {
-	var groupSpec:GroupSpecifier = new GroupSpecifier(this.data.confId);
-	groupSpec.multicastEnabled = true;
-	groupSpec.postingEnabled = true;
-	groupSpec.serverChannelEnabled = true;
-	
-	_stream2 = new NetStream(_conn2, groupSpec.groupspecWithAuthorizations());
-	_stream2.addEventListener(NetStatusEvent.NET_STATUS, eventHandler2);
+	_currentRemoteStream = _remoteStreamArray[index];
+	remoteStream.play(_remoteStreamArray[index]);
 }
 
 
@@ -280,11 +231,5 @@ private function groupConnectSuccess2():void {
 	 if (null != localStream)	 localStream.close();
 	 if (null != _group)        _group.close();
 	 if (null != _conn)         _conn.close();
-	 
-	 if (_conn2 != null){
-		 _stream2.close();
-		 _group2.close();
-		 _conn2.close();
-	 }
  }
 
